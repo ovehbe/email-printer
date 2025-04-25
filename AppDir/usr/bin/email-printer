@@ -1,8 +1,77 @@
-#!/bin/bash
-# Wrapper script to properly execute email_printer.py with Python
+#!/usr/bin/env python3
 
-# Get the directory of this script
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+import os
+import sys
+import importlib.util
+import subprocess
+import json
 
-# Call Python to run the actual Python script
-python3 "${SCRIPT_DIR}/email_printer.py" "$@" 
+# Set up basic paths
+script_dir = os.path.dirname(os.path.abspath(__file__))
+app_dir = os.path.dirname(os.path.dirname(script_dir))
+
+# Check if required modules are installed on the system
+required_modules = ["python-dotenv", "PyGObject"]
+missing_modules = []
+
+# Try to import each module
+try:
+    import gi
+    gi.require_version('Gtk', '3.0') 
+    gi.require_version('Pango', '1.0')
+    from gi.repository import Gtk, Gdk, GLib, Pango, Gio
+except ImportError:
+    missing_modules.append("PyGObject")
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    missing_modules.append("python-dotenv")
+
+# If there are missing modules, show a dialog
+if missing_modules:
+    try:
+        from gi.repository import Gtk
+        dialog = Gtk.MessageDialog(
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text="Missing dependencies"
+        )
+        dialog.format_secondary_text(
+            f"The following Python packages are required:\n" +
+            "\n".join(missing_modules) + 
+            "\n\nPlease install them with:\n" +
+            "pip install " + " ".join(missing_modules)
+        )
+        dialog.run()
+        dialog.destroy()
+    except Exception:
+        print("Error: Missing dependencies.")
+        print("Please install the following packages:")
+        for module in missing_modules:
+            print(f"  - {module}")
+        print(f"\nInstall with: pip install {' '.join(missing_modules)}")
+    sys.exit(1)
+
+# Now that we have all dependencies, import and run the app
+from email_printer import main
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        try:
+            dialog = Gtk.MessageDialog(
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.OK,
+                text="Error starting Email Printer"
+            )
+            dialog.format_secondary_text(f"Error: {str(e)}\n\n{error_details}")
+            dialog.run()
+            dialog.destroy()
+        except:
+            print(f"Error starting Email Printer: {str(e)}")
+            print(error_details)
+        sys.exit(1) 
