@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import subprocess
+
+# Get the real path to the script directory and app directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+app_dir = os.path.dirname(os.path.dirname(script_dir))
+
+# Add Python module paths
+python_paths = [
+    os.path.join(app_dir, "usr", "bin"),
+    os.path.join(app_dir, "usr", "lib", "python3", "dist-packages"),
+    os.path.join(app_dir, "usr", "python", "lib", "python3.12", "site-packages")
+]
+
+# Add paths to sys.path
+for path in python_paths:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+# Import the application
+from email_printer import main
+
+if __name__ == "__main__":
+    try:
+        main()
+    except ImportError as e:
+        # Handle missing dependencies
+        print(f"Error: Could not import required module: {e}")
+        print("This AppImage requires PyGObject and other GTK libraries.")
+        print("Please install them with:")
+        print("sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0")
+        sys.exit(1)
+    except Exception as e:
+        # Handle other errors
+        import traceback
+        print(f"Error starting Email Printer: {e}")
+        print(traceback.format_exc())
+        sys.exit(1) 

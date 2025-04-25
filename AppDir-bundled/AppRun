@@ -1,0 +1,14 @@
+#!/bin/bash
+# Find the directory where this AppRun script is located
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+
+# Set up environment
+export PATH="${HERE}/usr/bin:${HERE}/usr/python/bin:${PATH}"
+export PYTHONHOME="${HERE}/usr/python"
+export PYTHONPATH="${HERE}/usr/bin:${PYTHONPATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/python/lib:${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
+
+# Execute the app
+exec "${HERE}/usr/bin/email-printer" "$@" 
