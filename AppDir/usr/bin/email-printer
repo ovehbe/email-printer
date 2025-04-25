@@ -1,0 +1,8 @@
+#!/bin/bash
+# Wrapper script to properly execute email_printer.py with Python
+
+# Get the directory of this script
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+# Call Python to run the actual Python script
+python3 "${SCRIPT_DIR}/email_printer.py" "$@" 

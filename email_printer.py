@@ -21,14 +21,18 @@ class PrinterTab(Gtk.Box):
         self.set_margin_bottom(12)
         self.set_margin_start(12)
         self.set_margin_end(12)
-        self.set_vexpand(True)  # Allow vertical expansion
+        self.set_vexpand(True)
+        self.set_hexpand(True)
+        self.set_homogeneous(False)
         self.name = name
         self.parent = parent
         self.selected_files = []
         
-        # Create notebook for this printer
+        # Create notebook for this printer (will contain our tabs)
         self.notebook = Gtk.Notebook()
-        self.notebook.set_vexpand(True)  # Allow vertical expansion
+        self.notebook.set_vexpand(True)
+        self.notebook.set_hexpand(True)
+        # Fill this box with the notebook
         self.pack_start(self.notebook, True, True, 0)
         
         # Create main page
@@ -68,13 +72,21 @@ class PrinterTab(Gtk.Box):
         main_box.set_margin_bottom(12)
         main_box.set_margin_start(12)
         main_box.set_margin_end(12)
+        main_box.set_vexpand(True)
+        main_box.set_hexpand(True)
         
-        # Create drag and drop area
+        # Main content will be split between drop area (top) and file list (bottom)
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content_box.set_vexpand(True)
+        content_box.set_hexpand(True)
+        main_box.pack_start(content_box, True, True, 0)
+        
+        # Create drag and drop area (takes upper portion)
         drop_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         drop_area.set_vexpand(True)
         drop_area.set_hexpand(True)
-        drop_area.set_margin_top(20)
-        drop_area.set_margin_bottom(20)
+        drop_area.set_margin_top(10)
+        drop_area.set_margin_bottom(10)
         
         # Style the drop area
         drop_area_style = drop_area.get_style_context()
@@ -99,22 +111,24 @@ class PrinterTab(Gtk.Box):
         choose_button.connect("clicked", self.on_choose_file_clicked)
         drop_area.pack_start(choose_button, True, False, 0)
         
-        main_box.pack_start(drop_area, True, True, 0)
+        content_box.pack_start(drop_area, True, True, 0)
         
-        # Create file list with scrolling
+        # Create file list with scrolling (takes lower portion)
         list_frame = Gtk.Frame()
         list_frame.set_shadow_type(Gtk.ShadowType.NONE)
+        list_frame.set_vexpand(True)
+        list_frame.set_hexpand(True)
         
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.set_vexpand(True)
-        scrolled.set_min_content_height(100)  # Reduced from 150px
+        scrolled.set_hexpand(True)
         
         self.file_list = Gtk.ListBox()
         self.file_list.set_selection_mode(Gtk.SelectionMode.NONE)
         scrolled.add(self.file_list)
         list_frame.add(scrolled)
-        main_box.pack_start(list_frame, True, True, 0)
+        content_box.pack_start(list_frame, True, True, 0)
         
         # Create bottom box for progress and button
         bottom_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -816,25 +830,25 @@ class PrinterTab(Gtk.Box):
 
     def on_remove_printer_clicked(self, button):
         dialog = Gtk.MessageDialog(
-            parent=self.parent,
-            flags=0,
+            transient_for=self.parent,
             message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.YES_NO,
-            text=f"Remove printer '{self.name}'?",
-            secondary_text="This action cannot be undone."
+            text=f"Remove printer '{self.name}'?"
         )
+        dialog.format_secondary_text("This will delete all settings for this printer.")
         response = dialog.run()
         dialog.destroy()
         
         if response == Gtk.ResponseType.YES:
-            # Remove settings file
-            settings_path = os.path.expanduser(f"~/.config/email-printer/settings_{self.name}.json")
+            # Delete the settings file for this printer
+            settings_file = os.path.expanduser(f"~/.config/email-printer/settings_{self.name}.json")
             try:
-                os.remove(settings_path)
-            except FileNotFoundError:
-                pass  # Ignore if file doesn't exist
+                if os.path.exists(settings_file):
+                    os.remove(settings_file)
+            except Exception as e:
+                print(f"Error removing settings file: {e}")
             
-            # Remove from parent window
+            # Tell the parent window to remove this printer tab
             self.parent.remove_printer(self)
 
     def on_add_recipient_clicked(self, button):
@@ -860,36 +874,38 @@ class PrinterTab(Gtk.Box):
 class EmailPrinterWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="Email Printer")
-        self.set_default_size(675, 400)  # Reduced width from 850 to 750
+        self.set_default_size(675, 400)
         self.set_resizable(True)
         
         # Set minimum size
-        self.set_size_request(400, 250)
-        
-        # Connect size-allocate signal
-        self.connect("size-allocate", self.on_size_allocate)
+        self.set_size_request(400, 300)
         
         # Set window icon
-        icon_theme = Gtk.IconTheme.get_default()
         try:
-            icon = icon_theme.load_icon("mail-send", 48, 0)
-            self.set_icon(icon)
+            self.set_icon_name("mail-send")
         except:
-            pass
+            try:
+                icon_theme = Gtk.IconTheme.get_default()
+                icon = icon_theme.load_icon("mail-send", 48, 0)
+                self.set_icon(icon)
+            except:
+                pass
         
-        # Add padding around the main window
+        # Create the outermost container
+        outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(outer_box)
+        
+        # Add padding around the content
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         main_box.set_margin_top(12)
         main_box.set_margin_bottom(12)
         main_box.set_margin_start(12)
         main_box.set_margin_end(12)
-        main_box.set_vexpand(True)  # Ensure the main box expands vertically
-        self.add(main_box)
+        outer_box.pack_start(main_box, True, True, 0)
         
-        # Create printer tabs
+        # Create printer tabs notebook directly in the main box
         self.notebook = Gtk.Notebook()
         self.notebook.set_scrollable(True)
-        self.notebook.set_vexpand(True)
         main_box.pack_start(self.notebook, True, True, 0)
         
         # Add "+" button with icon
@@ -901,76 +917,131 @@ class EmailPrinterWindow(Gtk.Window):
         add_button.show_all()
         self.notebook.append_page(Gtk.Box(), add_button)
         
+        # Connect to realize signal to ensure content is visible
+        self.connect("realize", self.on_window_realize)
+        
         # Load saved printers
         self.load_printers()
-        
-        # Add close button to each tab
-        self.notebook.set_tab_reorderable(self.notebook.get_nth_page(0), True)
-        self.notebook.set_tab_detachable(self.notebook.get_nth_page(0), True)
-        
-        # Schedule initial size adjustment
-        GLib.idle_add(self.adjust_initial_size)
-
-    def on_size_allocate(self, widget, allocation):
-        # Force proper sizing of internal widgets
-        for i in range(self.notebook.get_n_pages() - 1):  # -1 for the "+" button
+    
+    def on_window_realize(self, widget):
+        # Force show all and resize after window is realized
+        self.show_all()
+        # Ensure all printer tabs are visible and expanded
+        for i in range(self.notebook.get_n_pages()):
             page = self.notebook.get_nth_page(i)
             if isinstance(page, PrinterTab):
-                # Ensure vertical expansion works
-                page.set_vexpand(True)
-                # Update layout as needed
-                page.queue_resize()
-    
-    def adjust_initial_size(self):
-        # Force a resize to ensure proper initial layout
-        width, height = self.get_size()
-        self.resize(width, height - 1)
-        GLib.timeout_add(100, lambda: self.resize(width, height))
-        return False
+                page.show_all()
+        # Switch to first tab if available
+        if self.notebook.get_n_pages() > 1:  # At least one printer + add button
+            self.notebook.set_current_page(0)
+        # Schedule another resize after a short delay
+        GLib.timeout_add(200, self.final_resize)
 
     def load_printers(self):
-        settings_path = os.path.expanduser("~/.config/email-printer/printers.json")
-        if os.path.exists(settings_path):
-            try:
-                with open(settings_path, 'r') as f:
-                    printers = json.load(f)
-                    for printer_name in printers:
-                        self.add_printer(printer_name)
-            except Exception as e:
-                print(f"Error loading printers: {e}")
-                # Add default printer if loading fails
+        printers_file = os.path.expanduser("~/.config/email-printer/printers.json")
+        try:
+            if os.path.exists(printers_file):
+                with open(printers_file, 'r') as f:
+                    data = json.load(f)
+                    printers = data.get("printers", []) if isinstance(data, dict) else data
+                    
+                    # If no printers found, add a default one
+                    if not printers:
+                        self.add_printer("Printer 1")
+                    else:
+                        # Add all saved printers with consistent naming format
+                        for printer_name in printers:
+                            # Ensure proper spacing in printer name
+                            if printer_name.startswith("Printer") and " " not in printer_name:
+                                # Convert "PrinterX" to "Printer X"
+                                number = printer_name.replace("Printer", "")
+                                printer_name = f"Printer {number}"
+                            self.add_printer(printer_name)
+            else:
+                # If file doesn't exist, add a default printer
                 self.add_printer("Printer 1")
-        else:
-            # Add default printer if no saved printers
+        except Exception as e:
+            print(f"Error loading printers: {e}")
+            # If there was an error, add a default printer
             self.add_printer("Printer 1")
 
     def save_printers(self):
-        settings_path = os.path.expanduser("~/.config/email-printer")
-        os.makedirs(settings_path, exist_ok=True)
+        # Create config directory if it doesn't exist
+        config_dir = os.path.expanduser("~/.config/email-printer")
+        os.makedirs(config_dir, exist_ok=True)
         
         # Get all printer names except the "+" button
-        printers = []
-        for i in range(self.notebook.get_n_pages() - 1):  # -1 for the "+" button
-            printer_tab = self.notebook.get_nth_page(i)
-            if isinstance(printer_tab, PrinterTab):
-                printers.append(printer_tab.name)
+        printer_names = []
+        for i in range(self.notebook.get_n_pages() - 1):  # Exclude the last tab (+ button)
+            page = self.notebook.get_nth_page(i)
+            if isinstance(page, PrinterTab):
+                printer_names.append(page.name)
         
-        with open(os.path.join(settings_path, "printers.json"), 'w') as f:
-            json.dump(printers, f, indent=4)
+        # Save to JSON file
+        printers_file = os.path.join(config_dir, "printers.json")
+        try:
+            with open(printers_file, 'w') as f:
+                json.dump({"printers": printer_names}, f)
+        except Exception as e:
+            print(f"Error saving printers: {e}")
 
     def add_printer(self, name):
         printer_tab = PrinterTab(name, self)
-        # Insert before the "+" button (which is always the last page)
-        self.notebook.insert_page(printer_tab, Gtk.Label(label=name), self.notebook.get_n_pages() - 1)
+        
+        # Find the "+" button tab index
+        add_button_index = -1
+        for i in range(self.notebook.get_n_pages()):
+            page = self.notebook.get_nth_page(i)
+            if not isinstance(page, PrinterTab):
+                add_button_index = i
+                break
+        
+        # Create tab label
+        tab_label = Gtk.Label(label=name)
+        tab_label.set_size_request(80, 24)  # Set minimum size for tab label
+        
+        # Insert the printer tab before the "+" button
+        if add_button_index >= 0:
+            # Insert before the "+" button
+            self.notebook.insert_page(printer_tab, tab_label, add_button_index)
+        else:
+            # If "+" button not found, just append and we'll handle recreating the "+" button later
+            self.notebook.append_page(printer_tab, tab_label)
+            
+            # Add the "+" button
+            add_button = Gtk.Button()
+            add_button.set_relief(Gtk.ReliefStyle.NONE)
+            add_icon = Gtk.Image.new_from_icon_name("list-add-symbolic", Gtk.IconSize.MENU)
+            add_button.add(add_icon)
+            add_button.connect("clicked", self.on_add_printer_clicked)
+            add_button.show_all()
+            self.notebook.append_page(Gtk.Box(), add_button)
+        
         self.notebook.set_tab_reorderable(printer_tab, True)
         self.notebook.set_tab_detachable(printer_tab, True)
+        
+        # Show and switch to the new tab
         self.notebook.show_all()
+        
+        # Find the index of the newly added tab and switch to it
+        for i in range(self.notebook.get_n_pages()):
+            if self.notebook.get_nth_page(i) == printer_tab:
+                self.notebook.set_current_page(i)
+                break
+        
+        # Force resize
+        printer_tab.queue_resize()
+        self.notebook.queue_resize()
+        
+        # Save printer list
         self.save_printers()
+        
+        return printer_tab
 
     def on_add_printer_clicked(self, button):
         # Find the next available printer number
         printer_count = self.notebook.get_n_pages() - 1  # -1 for the "+" button
-        new_name = f"Printer{printer_count + 1}"
+        new_name = f"Printer {printer_count + 1}"  # Add space between "Printer" and number
         self.add_printer(new_name)
 
     def update_printer_tab_name(self, printer_tab):
@@ -980,16 +1051,95 @@ class EmailPrinterWindow(Gtk.Window):
             self.save_printers()
 
     def remove_printer(self, printer_tab):
-        # Remove the printer tab from the notebook
-        page_num = self.notebook.page_num(printer_tab)
-        if page_num != -1:
-            self.notebook.remove_page(page_num)
+        # Find the tab to remove
+        target_index = -1
+        for i in range(self.notebook.get_n_pages()):
+            if self.notebook.get_nth_page(i) == printer_tab:
+                target_index = i
+                break
         
-        # If this was the last printer, add a default one
-        if self.notebook.get_n_pages() == 1:  # Only the "+" button remains
+        if target_index == -1:
+            return  # Tab not found
+        
+        # Get the current active page
+        current_page = self.notebook.get_current_page()
+        
+        # Delete the settings file for this printer
+        try:
+            settings_file = os.path.expanduser(f"~/.config/email-printer/settings_{printer_tab.name}.json")
+            if os.path.exists(settings_file):
+                os.remove(settings_file)
+        except Exception as e:
+            print(f"Error removing settings file: {e}")
+        
+        # Just remove the single tab without rebuilding everything
+        self.notebook.remove_page(target_index)
+        
+        # Make sure we select an appropriate tab
+        if current_page == target_index:
+            # If we removed the active tab, select previous tab or first tab
+            if target_index > 0:
+                self.notebook.set_current_page(target_index - 1)
+            else:
+                self.notebook.set_current_page(0)
+        elif current_page > target_index:
+            # If we removed a tab before the current one, adjust the selected tab
+            self.notebook.set_current_page(current_page - 1)
+        
+        # Force UI update
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+        
+        # Check if we still have the + button
+        has_add_button = False
+        for i in range(self.notebook.get_n_pages()):
+            page = self.notebook.get_nth_page(i)
+            if not isinstance(page, PrinterTab):
+                has_add_button = True
+                break
+        
+        # If add button is missing, recreate it
+        if not has_add_button:
+            add_button = Gtk.Button()
+            add_button.set_relief(Gtk.ReliefStyle.NONE)
+            add_icon = Gtk.Image.new_from_icon_name("list-add-symbolic", Gtk.IconSize.MENU)
+            add_button.add(add_icon)
+            add_button.connect("clicked", self.on_add_printer_clicked)
+            add_button.show_all()
+            self.notebook.append_page(Gtk.Box(), add_button)
+        
+        # If there are no printers left (only the + button), add a default printer
+        printer_count = 0
+        for i in range(self.notebook.get_n_pages()):
+            if isinstance(self.notebook.get_nth_page(i), PrinterTab):
+                printer_count += 1
+        
+        if printer_count == 0:
             self.add_printer("Printer 1")
         
+        # Save the updated printer list
         self.save_printers()
+        
+        # Force notebook update
+        self.notebook.queue_resize()
+        self.notebook.queue_draw()
+
+    def final_resize(self):
+        # Force a final resize of all components
+        self.notebook.queue_resize()
+        for i in range(self.notebook.get_n_pages()):
+            page = self.notebook.get_nth_page(i)
+            if isinstance(page, PrinterTab):
+                # Force internal notebooks to resize
+                page.notebook.queue_resize()
+                
+                # Make sure each page's content is sized properly
+                for j in range(page.notebook.get_n_pages()):
+                    child = page.notebook.get_nth_page(j)
+                    child.queue_resize()
+        
+        # Don't call this function again
+        return False
 
 def main():
     # Set dark theme preference
@@ -1011,19 +1161,33 @@ def main():
         color: #e0e0e0;
     }
     
+    /* Make all boxes expand properly */
+    box {
+        min-height: 10px;
+        min-width: 10px;
+    }
+    
     /* Notebook (tabs) styling */
     notebook {
         background-color: #252525;
-        min-height: 100px;  /* Reduced from 300px to allow smaller sizes */
     }
     
-    GtkNotebook > GtkLabel {
-        padding: 0 10px;
+    notebook stack {
+        min-height: 200px;
+    }
+    
+    scrolledwindow {
+        min-height: 100px;
     }
     
     notebook header {
         background-color: #2d2d2d;
         border-bottom: 1px solid #383838;
+        min-height: 36px;
+    }
+    
+    notebook header tabs {
+        min-height: 36px;
     }
     
     notebook tab {
@@ -1031,6 +1195,8 @@ def main():
         background-color: #2d2d2d;
         border: none;
         color: #b0b0b0;
+        min-height: 24px;  /* Ensure minimum height for tabs */
+        min-width: 80px;   /* Ensure minimum width for tabs */
     }
     
     notebook tab:checked {
@@ -1182,9 +1348,21 @@ def main():
         Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
     
+    # Create window but don't show immediately
     win = EmailPrinterWindow()
     win.connect("destroy", Gtk.main_quit)
-    win.show_all()
+    
+    # Add a slight delay before showing the window
+    # This helps ensure everything is properly initialized
+    def delayed_show():
+        win.show_all()
+        # Force a resize after showing
+        GLib.timeout_add(100, lambda: win.resize(675, 400))
+        return False
+    
+    # Show window after slight delay
+    GLib.timeout_add(50, delayed_show)
+    
     Gtk.main()
 
 if __name__ == "__main__":

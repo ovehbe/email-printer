@@ -1,0 +1,17 @@
+#!/bin/bash
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+export PATH="${HERE}/usr/bin:${PATH}"
+export PYTHONPATH="${HERE}/usr/lib/python3/site-packages:${PYTHONPATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
+
+# Create config directory if it doesn't exist
+mkdir -p ~/.config/email-printer
+
+# For debugging
+echo "Starting Email Printer in directory: ${HERE}"
+echo "Python path: $(which python3)"
+echo "PYTHONPATH: ${PYTHONPATH}"
+
+# Run the application
+exec "${HERE}/usr/bin/email-printer" "$@" 
