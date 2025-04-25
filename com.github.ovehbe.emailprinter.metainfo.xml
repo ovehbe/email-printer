@@ -33,14 +33,14 @@
   <content_rating type="oars-1.1" />
   
   <releases>
-    <release version="1.0.0" date="2023-07-18">
+    <release version="1.0.0" date="2025-04-25">
       <description>
         <p>Initial release</p>
       </description>
     </release>
   </releases>
   
-  <developer_name>Your Name</developer_name>
+  <developer_name>Ömer Vehbe</developer_name>
   
   <categories>
     <category>Utility</category>
