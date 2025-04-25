@@ -28,7 +28,7 @@ The application requires the following dependencies:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/email-printer.git
+git clone https://github.com/ovehbe/email-printer.git
 cd email-printer
 ```
 
@@ -42,12 +42,26 @@ pip install -r requirements.txt
 python email_printer.py
 ```
 
+### AppImage
+
+The application is also available as an AppImage, which runs on most Linux distributions without installation:
+
+1. Download the latest AppImage from the [Releases](https://github.com/ovehbe/email-printer/releases) page
+2. Make it executable:
+```bash
+chmod +x EmailPrinter-x86_64.AppImage
+```
+3. Run it:
+```bash
+./EmailPrinter-x86_64.AppImage
+```
+
 ### Flatpak Installation (Coming Soon)
 
 The application will be available on Flathub. To install:
 
 ```bash
-flatpak install flathub com.github.emailprinter
+flatpak install flathub com.github.ovehbe.emailprinter
 ```
 
 ## Usage
