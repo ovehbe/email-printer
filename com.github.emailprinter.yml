@@ -1,0 +1,21 @@
+app-id: com.github.emailprinter
+runtime: org.gnome.Platform
+runtime-version: '45'
+sdk: org.gnome.Sdk
+command: email-printer
+finish-args:
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --filesystem=xdg-config/email-printer:create
+modules:
+  - name: email-printer
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app -r requirements.txt
+      - install -D email_printer.py /app/bin/email-printer
+    sources:
+      - type: file
+        path: email_printer.py
+      - type: file
+        path: requirements.txt 
