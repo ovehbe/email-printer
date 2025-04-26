@@ -2,40 +2,75 @@
 
 import os
 import sys
+import importlib.util
 import subprocess
 
-# Get the real path to the script directory and app directory
-script_dir = os.path.dirname(os.path.abspath(__file__))
-app_dir = os.path.dirname(os.path.dirname(script_dir))
+# Add AppImage paths to Python module search path
+appdir_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+module_path = os.path.join(appdir_path, "usr", "lib", "python-modules")
 
-# Add Python module paths
-python_paths = [
-    os.path.join(app_dir, "usr", "bin"),
-    os.path.join(app_dir, "usr", "lib", "python3", "dist-packages"),
-    os.path.join(app_dir, "usr", "python", "lib", "python3.12", "site-packages")
-]
+# Add our bundled modules to Python path
+if module_path not in sys.path:
+    sys.path.insert(0, module_path)
 
-# Add paths to sys.path
-for path in python_paths:
-    if path not in sys.path:
-        sys.path.insert(0, path)
+# Add the current directory to the path
+app_path = os.path.join(appdir_path, "usr", "bin")
+if app_path not in sys.path:
+    sys.path.insert(0, app_path)
 
-# Import the application
-from email_printer import main
+# Check for required modules
+missing_modules = []
 
-if __name__ == "__main__":
+# PyGObject is required but can't be bundled - must be installed on system
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+except ImportError:
+    missing_modules.append("PyGObject")
+
+# Python-dotenv should be bundled with the AppImage
+try:
+    import dotenv
+except ImportError:
+    missing_modules.append("python-dotenv")
+
+# Handle missing dependencies
+if missing_modules:
+    if "PyGObject" in missing_modules:
+        print("Error: Missing PyGObject (python3-gi) dependency")
+        print("\nEmail Printer requires the GTK libraries to be installed.")
+        print("Please run the following command to install the required dependencies:")
+        print("\nsudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0\n")
+        print("For other distributions:")
+        print("Fedora/RHEL: sudo dnf install python3-gobject gtk3")
+        print("Arch: sudo pacman -S python-gobject gtk3")
+        print("openSUSE: sudo zypper install python3-gobject gtk3")
+    else:
+        print(f"Error: Missing dependencies: {', '.join(missing_modules)}")
+    sys.exit(1)
+
+# Now try to import and run the application
+try:
+    from email_printer import main
+    main()
+except Exception as e:
+    # If we got here, we have PyGObject but something else went wrong
+    import traceback
+    
+    # Try to show a GUI error if possible
     try:
-        main()
-    except ImportError as e:
-        # Handle missing dependencies
-        print(f"Error: Could not import required module: {e}")
-        print("This AppImage requires PyGObject and other GTK libraries.")
-        print("Please install them with:")
-        print("sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0")
-        sys.exit(1)
-    except Exception as e:
-        # Handle other errors
-        import traceback
+        dialog = Gtk.MessageDialog(
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text="Error starting Email Printer"
+        )
+        dialog.format_secondary_text(f"Error: {str(e)}")
+        dialog.run()
+        dialog.destroy()
+    except:
+        # Fallback to console error
         print(f"Error starting Email Printer: {e}")
         print(traceback.format_exc())
-        sys.exit(1) 
+    
+    sys.exit(1) 

@@ -4,11 +4,28 @@ SELF=$(readlink -f "$0")
 HERE=${SELF%/*}
 
 # Set up environment
-export PATH="${HERE}/usr/bin:${HERE}/usr/python/bin:${PATH}"
-export PYTHONHOME="${HERE}/usr/python"
-export PYTHONPATH="${HERE}/usr/bin:${PYTHONPATH}"
-export LD_LIBRARY_PATH="${HERE}/usr/python/lib:${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+export PATH="${HERE}/usr/bin:${PATH}"
 export XDG_DATA_DIRS="${HERE}/usr/share:${XDG_DATA_DIRS}"
+export PYTHONPATH="${HERE}/usr/lib/python-modules:${PYTHONPATH}"
 
-# Execute the app
-exec "${HERE}/usr/bin/email-printer" "$@" 
+# Find the system Python (prefer 3.10+ but accept any Python 3)
+PYTHON=$(which python3)
+if [ ! -x "$PYTHON" ]; then
+    echo "Error: Python 3 is required but not found."
+    echo "Please install Python 3 on your system."
+    exit 1
+fi
+
+# Check Python version
+PY_VERSION=$($PYTHON -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PY_MAJOR=$(echo $PY_VERSION | cut -d. -f1)
+PY_MINOR=$(echo $PY_VERSION | cut -d. -f2)
+
+if [ "$PY_MAJOR" -lt 3 ] || ([ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 8 ]); then
+    echo "Error: Python 3.8 or higher is required."
+    echo "Found Python $PY_VERSION"
+    exit 1
+fi
+
+# Execute our launcher script
+exec "$PYTHON" "${HERE}/usr/bin/email-printer" "$@" 
