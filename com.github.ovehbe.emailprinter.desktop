@@ -1,11 +1,14 @@
 [Desktop Entry]
+Version=1.0
 Name=Email Printer
 GenericName=Email Printer
-Comment=Send files via email with drag-and-drop
-Exec=email-printer
+Comment=Send files to an email address (e.g., a printer)
+# Icon=com.github.ovehbe.emailprinter
 Icon=com.github.ovehbe.emailprinter
+Exec=email-printer
 Terminal=false
 Type=Application
-Categories=Utility;Office;Email;
-Keywords=email;print;files;send;
-StartupNotify=true 
+# Categories=Utility;Office;Email;
+Categories=Utility;Network;Email;
+# StartupNotify=true 
+StartupNotify=true

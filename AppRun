@@ -1,0 +1,29 @@
+#!/bin/sh
+# Enable tracing
+set -x
+# Log to file
+exec 1>/tmp/email-printer.log 2>&1
+
+APPDIR=$(dirname "$0")
+export PATH="${APPDIR}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH}"
+# Find the python site-packages directory dynamically
+PYTHON_MAJOR_MINOR=$(ls "${APPDIR}/usr/lib/" | grep -o 'python[0-9]\+\.[0-9]\+' | head -n 1)
+if [ -n "$PYTHON_MAJOR_MINOR" ]; then
+  export PYTHONPATH="${APPDIR}/usr/lib/${PYTHON_MAJOR_MINOR}/site-packages:${PYTHONPATH}"
+fi
+# Set PYTHONHOME to prevent conflicts with system Python
+export PYTHONHOME="${APPDIR}/usr"
+
+# Add GTK environment variables
+export GI_TYPELIB_PATH="${APPDIR}/usr/lib/girepository-1.0"
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas"
+export GTK_EXE_PREFIX="${APPDIR}/usr"
+
+# Print email-printer script content
+echo "Content of email-printer script:"
+cat "$APPDIR/usr/bin/email-printer"
+
+# Execute with Python directly to bypass the shebang
+"$APPDIR/usr/bin/python3" "$APPDIR/usr/bin/email-printer" "$@" 
