@@ -867,7 +867,9 @@ class PrinterTab(Gtk.Box):
 
     def on_remove_recipient_clicked(self, button, email):
         for row in self.recipient_list.get_children():
-            if row.get_children()[0].get_text() == email:
+            row_box = row.get_child()  # This is the Box inside the ListBoxRow
+            label = row_box.get_children()[0]  # This is the Label inside the Box
+            if label.get_text() == email:
                 self.recipient_list.remove(row)
                 break
 
